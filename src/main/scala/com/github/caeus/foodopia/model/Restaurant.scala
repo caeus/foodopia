@@ -1,5 +1,7 @@
 package com.github.caeus.foodopia.model
 
+import java.time.Instant
+
 case class LogInReq(email: String, password: String)
 case class LogInResp(token: String)
 case class SignUpReq(name: String, email: String, password: String)
@@ -10,5 +12,6 @@ object RestaurantsFilter {
   case class City(name: String)                         extends RestaurantsFilter
   case class Location(lat: BigDecimal, lng: BigDecimal) extends RestaurantsFilter
 }
-case class RLocation(formatted:Option[String],lat:BigDecimal,lng:BigDecimal)
-case class Restaurant(name:String, location:RLocation)
+case class RLocation(formatted: Option[String], lat: BigDecimal, lng: BigDecimal)
+case class Restaurant(name: String, location: RLocation)
+case class SearchRecord(details: RestaurantsFilter, at: Instant)

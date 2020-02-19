@@ -1,38 +1,40 @@
 package com.github.caeus.foodopia.logic
 
-import com.github.caeus.foodopia.model.RestaurantsFilter.{City, Location}
 import com.github.caeus.foodopia.middleware.GeoCitiesDB
-import com.github.caeus.foodopia.model.{Restaurant, RestaurantsFilter}
+import com.github.caeus.foodopia.model.{Restaurant, RestaurantsFilter, SearchRecord}
+import com.github.caeus.foodopia.storage.SearchesRegistry
 import zio.Task
 
 trait CustomerAPI {
+  def searches: Task[Seq[SearchRecord]]
+
   def restaurantsBy(filter: RestaurantsFilter): Task[Seq[Restaurant]]
   def logOut: Task[Unit]
 }
 object CustomerAPI {
   def impl(email: String,
-           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+           restaurantsEngine: RestaurantsEngine,
+           searchesRegistry: SearchesRegistry,
            geoCitiesDB: GeoCitiesDB): CustomerAPI =
-    new DefaultCustomerAPI(email, nearbyRestaurantsSrv, geoCitiesDB: GeoCitiesDB)
+    new DefaultCustomerAPI(email,
+                           restaurantsEngine,
+                           searchesRegistry: SearchesRegistry,
+                           geoCitiesDB: GeoCitiesDB)
 }
 final class DefaultCustomerAPI(email: String,
-                               nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                               restaurantsEngine: RestaurantsEngine,
+                               searchesRegistry: SearchesRegistry,
                                geoCitiesDB: GeoCitiesDB)
-  extends CustomerAPI {
+    extends CustomerAPI {
+
   override def restaurantsBy(filter: RestaurantsFilter): Task[Seq[Restaurant]] = {
-    filter match {
-      case City(name) =>
-        for {
-          city <- geoCitiesDB.firstByPrefix(name).flatMap {
-            case Some(city) => Task.succeed(city)
-            case None       => Task.fail(new IllegalArgumentException(s"There's no city with name $name"))
-          }
-          resaurants <- nearbyRestaurantsSrv.byLatLng(city.latitude, city.longitude)
-        } yield resaurants
-      case Location(lat, lng) =>
-        nearbyRestaurantsSrv.byLatLng(lat, lng)
-    }
+    for {
+      _      <- searchesRegistry.register(email, filter)
+      result <- restaurantsEngine.byFilter(filter)
+    } yield result
   }
 
   override def logOut: Task[Unit] = Task.succeed(())
+
+  override def searches: Task[Seq[SearchRecord]] = searchesRegistry.byUser(email)
 }

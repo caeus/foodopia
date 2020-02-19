@@ -15,14 +15,14 @@ object CustomerRepo {
 }
 
 final class DefaultCustomerRepo extends CustomerRepo {
-  private val asd = scala.collection.mutable.Map.empty[String, CustomerRow]
+  private val map = scala.collection.mutable.Map.empty[String, CustomerRow]
 
   override def create(row: CustomerRow): Task[Unit] = Task.effect {
-    if (asd.contains(row.email)) throw new IllegalStateException("WHAAAA")
-    asd.update(row.email, row)
+    if (map.contains(row.email)) throw new IllegalStateException("WHAAAA")
+    map.update(row.email, row)
   }
 
   override def byEmail(email: String): Task[Option[CustomerRow]] = Task.effect {
-    asd.get(email)
+    map.get(email)
   }
 }

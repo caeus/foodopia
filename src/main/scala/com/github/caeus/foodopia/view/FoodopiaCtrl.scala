@@ -3,9 +3,9 @@ package com.github.caeus.foodopia.view
 import java.time.temporal.ChronoUnit
 
 import cats.implicits._
-import com.github.caeus.foodopia.model.RestaurantsFilter.{City, Location}
 import com.github.caeus.foodopia.logic._
-import com.github.caeus.foodopia.model.{LogInReq, Restaurant, RestaurantsFilter, SignUpReq}
+import com.github.caeus.foodopia.model.RestaurantsFilter.{City, Location}
+import com.github.caeus.foodopia.model._
 import io.circe.generic.AutoDerivation
 import sttp.model.CookieValueWithMeta
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
@@ -36,6 +36,12 @@ object FoodopiaDocs extends AutoDerivation {
     .in(query[Option[String]]("city"))
     .in(query[Option[String]]("location"))
     .out(jsonBody[Seq[Restaurant]])
+    .errorOut(jsonBody[ApiError])
+
+  val searches = endpoint.get
+    .in("v1" / "customer" / "searches")
+    .in(cookie[String]("session_id"))
+    .out(jsonBody[Seq[SearchRecord]])
     .errorOut(jsonBody[ApiError])
 
   val logOut = endpoint
@@ -110,6 +116,12 @@ class FoodopiaCtrl(foodopiaAPI: FoodopiaAPI, clock: zio.clock.Clock.Service[Any]
         .mapError(e => ApiError(e.getMessage))
         .either
   }
-  val routes = logIn <+> logOut <+> signUp <+> search <+> new SwaggerHttp4s(FoodopiaDocs.yaml)
+  private val searches: HttpRoutes[Task] = docs.searches.toRoutes { token =>
+    (for {
+      customerAPI <- foodopiaAPI.customer(token)
+      res         <- customerAPI.searches
+    } yield res).mapError(e => ApiError(e.getMessage)).either
+  }
+  val routes = logIn <+> logOut <+> signUp <+> search <+> searches <+> new SwaggerHttp4s(FoodopiaDocs.yaml)
     .routes[Task]
 }
