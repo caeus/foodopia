@@ -3,8 +3,9 @@ package com.github.caeus.foodopia.view
 import java.time.temporal.ChronoUnit
 
 import cats.implicits._
-import com.github.caeus.foodopia.logic.RestaurantsFilter.{City, Location}
+import com.github.caeus.foodopia.model.RestaurantsFilter.{City, Location}
 import com.github.caeus.foodopia.logic._
+import com.github.caeus.foodopia.model.{LogInReq, Restaurant, RestaurantsFilter, SignUpReq}
 import io.circe.generic.AutoDerivation
 import sttp.model.CookieValueWithMeta
 import sttp.tapir.swagger.http4s.SwaggerHttp4s

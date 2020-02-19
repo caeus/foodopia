@@ -1,13 +1,8 @@
 package com.github.caeus.foodopia
 
 import com.github.caeus.foodopia.conf.FoodopiaConf
-import com.github.caeus.foodopia.logic.FoodopiaAPI
-import com.github.caeus.foodopia.middleware.{
-  AuthEngine,
-  GeoCitiesDB,
-  GooglePlacesAPI,
-  NearbyRestaurantsSrv
-}
+import com.github.caeus.foodopia.logic.{FoodopiaAPI, NearbyRestaurantsSrv}
+import com.github.caeus.foodopia.middleware.{AuthEngine, GeoCitiesDB, GooglePlacesAPI}
 import com.github.caeus.foodopia.storage.CustomerRepo
 import com.github.caeus.foodopia.view.FoodopiaCtrl
 import org.http4s.implicits._

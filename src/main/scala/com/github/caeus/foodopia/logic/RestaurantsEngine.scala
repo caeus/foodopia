@@ -1,6 +1,7 @@
-package com.github.caeus.foodopia.middleware
+package com.github.caeus.foodopia.logic
 
-import com.github.caeus.foodopia.logic.{RLocation, Restaurant}
+import com.github.caeus.foodopia.middleware.GooglePlacesAPI
+import com.github.caeus.foodopia.model.{RLocation, Restaurant}
 import zio.Task
 
 trait NearbyRestaurantsSrv {
