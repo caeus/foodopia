@@ -35,3 +35,5 @@ and it will give you an overall view of the architecture.
 ## Caveats, obstacles and problems
 
 Are there free APIs to search for cities and restaurants? I ended up paying a google service.
+
+I was kind of a perfectionist and didn't have time to plug a DB nor pack everything into a docker.
