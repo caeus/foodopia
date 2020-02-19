@@ -3,7 +3,7 @@ package com.github.caeus.foodopia
 import com.github.caeus.foodopia.conf.FoodopiaConf
 import com.github.caeus.foodopia.logic.{FoodopiaAPI, RestaurantsEngine}
 import com.github.caeus.foodopia.middleware.{AuthEngine, GeoCitiesDB, GooglePlacesAPI}
-import com.github.caeus.foodopia.storage.{CustomerRepo, SearchesRegistry}
+import com.github.caeus.foodopia.storage.{BootstrapDB, CustomerRepo, SearchesRegistry}
 import com.github.caeus.foodopia.view.FoodopiaCtrl
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -14,19 +14,20 @@ import sttp.client.asynchttpclient.zio.AsyncHttpClientZioBackend
 import zio.clock.Clock
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{FiberFailure, RIO, Runtime, Task, URIO, ZEnv, ZIO}
+import zio.{FiberFailure, RIO, Runtime, Task, URIO, ZEnv, ZIO, ZManaged}
 class FoodopiaMain(implicit runtime: zio.Runtime[Any]) {
-  def wire: RIO[ZEnv, Int] = AsyncHttpClientZioBackend().flatMap {
+  def wire: ZManaged[ZEnv, Throwable, Int] = AsyncHttpClientZioBackend().toManaged_.flatMap {
     implicit backend: SttpBackend[Task, Nothing, WebSocketHandler] =>
       for {
         conf                      <- FoodopiaConf.load
-        clock: Clock.Service[Any] <- RIO.access[ZEnv](_.clock)
+        clock: Clock.Service[Any] <- RIO.access[ZEnv](_.clock).toManaged_
+        db                        <- BootstrapDB.prod(conf.db)
         googlePlacesAPI            = GooglePlacesAPI.impl(conf.middleware.gPlaces)
         geoCitiesDB                = GeoCitiesDB.impl(conf.middleware.geoCities)
         restaurantsEngine          = RestaurantsEngine.impl(googlePlacesAPI, geoCitiesDB)
-        customerRepo: CustomerRepo = CustomerRepo.impl
+        customerRepo: CustomerRepo = CustomerRepo.impl(db)
         authEngine: AuthEngine     = AuthEngine.impl(clock, conf.auth)
-        searchesEngine             = SearchesRegistry.impl(clock)
+        searchesEngine             = SearchesRegistry.impl(db, clock)
         foodopiaAPI = FoodopiaAPI.impl(customerRepo,
                                        authEngine,
                                        restaurantsEngine,
@@ -43,11 +44,14 @@ class FoodopiaMain(implicit runtime: zio.Runtime[Any]) {
           .serve
           .compile
           .drain
+          .toManaged_
       } yield 0
   }
-  val run: URIO[ZEnv, Int] = wire.foldCauseM({ cause =>
-    ZIO.effectTotal(FiberFailure(cause).printStackTrace()).as(1)
-  }, ZIO.succeed)
+  val run: URIO[ZEnv, Int] = wire
+    .use(_ => URIO.unit)
+    .foldCauseM({ cause =>
+      ZIO.effectTotal(FiberFailure(cause).printStackTrace()).as(1)
+    }, _ => ZIO.succeed(0))
 }
 
 object Main extends zio.App {

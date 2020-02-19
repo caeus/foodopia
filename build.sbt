@@ -5,6 +5,8 @@ val LogbackVersion    = "1.2.3"
 val SttpVersion       = "2.0.0-RC6"
 val TapirVersion      = "0.12.21"
 val PureconfigVersion = "0.12.1"
+val DoobieVersion     = "0.8.6"
+val FlywayVersion     = "6.1.2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -13,12 +15,19 @@ lazy val root = (project in file("."))
     version := "0.0.1-SNAPSHOT",
     scalaVersion := "2.13.1",
     libraryDependencies ++= Seq(
+      "org.flywaydb"                 % "flyway-core"                    % FlywayVersion,
       "org.mindrot"                  % "jbcrypt"                        % "0.4",
       "com.github.pureconfig"        %% "pureconfig"                    % PureconfigVersion,
       "org.reactormonk"              %% "cryptobits"                    % "1.3",
       "com.softwaremill.sttp.tapir"  %% "tapir-core"                    % "0.12.21",
       "dev.zio"                      %% "zio"                           % "1.0.0-RC17",
       "dev.zio"                      %% "zio-interop-cats"              % "2.0.0.0-RC10",
+      "org.tpolecat"                 %% "doobie-core"                   % DoobieVersion,
+      "org.tpolecat"                 %% "doobie-hikari"                 % DoobieVersion, // HikariCP transactor.
+      "org.tpolecat"                 %% "doobie-postgres"               % DoobieVersion,
+      "org.tpolecat"                 %% "doobie-specs2"                 % DoobieVersion % "test", // Specs2 support for typechecking statements.
+      "org.tpolecat"                 %% "doobie-scalatest"              % DoobieVersion % "test",
+      "org.tpolecat"                 %% "doobie-postgres"               % DoobieVersion,
       "com.softwaremill.sttp.tapir"  %% "tapir-core"                    % TapirVersion,
       "com.softwaremill.sttp.tapir"  %% "tapir-json-circe"              % TapirVersion,
       "com.softwaremill.sttp.tapir"  %% "tapir-http4s-server"           % TapirVersion,
