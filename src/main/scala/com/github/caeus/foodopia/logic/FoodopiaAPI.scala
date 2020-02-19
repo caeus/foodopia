@@ -1,6 +1,7 @@
 package com.github.caeus.foodopia.logic
 
-import com.github.caeus.foodopia.middleware.{AuthEngine, NearbyRestaurantsSrv}
+import com.github.caeus.foodopia.logic.RestaurantsFilter.{City, Location}
+import com.github.caeus.foodopia.middleware.{AuthEngine, GeoCitiesDB, NearbyRestaurantsSrv}
 import com.github.caeus.foodopia.storage.{CustomerRepo, CustomerRow}
 import zio.Task
 
@@ -49,18 +50,39 @@ object RestaurantsFilter {
   case class City(name: String)                         extends RestaurantsFilter
   case class Location(lat: BigDecimal, lng: BigDecimal) extends RestaurantsFilter
 }
-case class Restaurant()
+case class RLocation(formatted:Option[String],lat:BigDecimal,lng:BigDecimal)
+case class Restaurant(name:String, location:RLocation)
 
 trait CustomerAPI {
   def restaurantsBy(filter: RestaurantsFilter): Task[Seq[Restaurant]]
+  def logOut: Task[Unit]
 }
 object CustomerAPI {
-  def impl(nearbyRestaurantsSrv: NearbyRestaurantsSrv): CustomerAPI =
-    new DefaultCustomerAPI(nearbyRestaurantsSrv)
+  def impl(email: String,
+           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+           geoCitiesDB: GeoCitiesDB): CustomerAPI =
+    new DefaultCustomerAPI(email, nearbyRestaurantsSrv, geoCitiesDB: GeoCitiesDB)
 }
-final class DefaultCustomerAPI(nearbyRestaurantsSrv: NearbyRestaurantsSrv) extends CustomerAPI {
-  override def restaurantsBy(filter: RestaurantsFilter): Task[Seq[Restaurant]] =
-    nearbyRestaurantsSrv.byLatLng(null, null)
+final class DefaultCustomerAPI(email: String,
+                               nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                               geoCitiesDB: GeoCitiesDB)
+    extends CustomerAPI {
+  override def restaurantsBy(filter: RestaurantsFilter): Task[Seq[Restaurant]] = {
+    filter match {
+      case City(name) =>
+        for {
+          city <- geoCitiesDB.firstByPrefix(name).flatMap {
+            case Some(city) => Task.succeed(city)
+            case None       => Task.fail(new IllegalArgumentException(s"There's no city with name $name"))
+          }
+          resaurants <- nearbyRestaurantsSrv.byLatLng(city.latitude, city.longitude)
+        } yield resaurants
+      case Location(lat, lng) =>
+        nearbyRestaurantsSrv.byLatLng(lat, lng)
+    }
+  }
+
+  override def logOut: Task[Unit] = Task.succeed(())
 }
 trait FoodopiaAPI {
   def guest: Task[GuestAPI]
@@ -70,18 +92,20 @@ trait FoodopiaAPI {
 object FoodopiaAPI {
   def impl(customerRepo: CustomerRepo,
            authEngine: AuthEngine,
-           nearbyRestaurantsSrv: NearbyRestaurantsSrv): FoodopiaAPI =
+           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+           geoCitiesDB: GeoCitiesDB): FoodopiaAPI =
     new DefaultFoodopiaAPI(customerRepo: CustomerRepo,
                            authEngine: AuthEngine,
-                           nearbyRestaurantsSrv: NearbyRestaurantsSrv)
+                           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                           geoCitiesDB: GeoCitiesDB)
 }
 final class DefaultFoodopiaAPI(customerRepo: CustomerRepo,
                                authEngine: AuthEngine,
-                               nearbyRestaurantsSrv: NearbyRestaurantsSrv)
+                               nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                               geoCitiesDB: GeoCitiesDB)
     extends FoodopiaAPI {
 
-  private val customerAPI = CustomerAPI.impl(nearbyRestaurantsSrv)
-  private val guestAPI    = GuestAPI.impl(customerRepo, authEngine)
+  private val guestAPI = GuestAPI.impl(customerRepo, authEngine)
 
   override def guest: Task[GuestAPI] = Task.succeed(guestAPI)
 
@@ -92,6 +116,6 @@ final class DefaultFoodopiaAPI(customerRepo: CustomerRepo,
         case None    => Task.fail(new IllegalArgumentException(s"Email $email is not registered"))
         case Some(_) => Task.succeed(())
       }
-    } yield customerAPI
+    } yield CustomerAPI.impl(email, nearbyRestaurantsSrv, geoCitiesDB)
   }
 }

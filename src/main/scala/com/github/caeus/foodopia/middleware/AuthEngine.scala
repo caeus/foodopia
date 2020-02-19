@@ -1,6 +1,6 @@
 package com.github.caeus.foodopia.middleware
 
-import com.github.caeus.foodopia.conf.FoodopiaAuth
+import com.github.caeus.foodopia.conf.AuthConf
 import org.mindrot.jbcrypt.BCrypt
 import org.reactormonk.{CryptoBits, PrivateKey}
 import zio.Task
@@ -14,9 +14,9 @@ trait AuthEngine {
   def toEmail(token: String): Task[String]
 }
 object AuthEngine {
-  def impl(clock: Clock.Service[Any], conf: FoodopiaAuth): AuthEngine = new DefaultAuthEngine(clock, conf: FoodopiaAuth)
+  def impl(clock: Clock.Service[Any], conf: AuthConf): AuthEngine = new DefaultAuthEngine(clock, conf: AuthConf)
 }
-final class DefaultAuthEngine(clock: Clock.Service[Any], conf: FoodopiaAuth) extends AuthEngine {
+final class DefaultAuthEngine(clock: Clock.Service[Any], conf: AuthConf) extends AuthEngine {
 
   val crypto = CryptoBits(PrivateKey(scala.io.Codec.toUTF8(conf.privateKey)))
 

@@ -3,9 +3,13 @@ package com.github.caeus.foodopia.conf
 import pureconfig.error.ConfigReaderException
 import zio.{Task, ZIO}
 
-case class FoodopiaAuth(privateKey: String)
-case class FoodopiaConf(auth: FoodopiaAuth)
+case class AuthConf(privateKey: String)
+case class HttpConf(port: Int, host: String)
+case class GeoCitiesConf(apiKey: String)
+case class GPlacesConf(apiKey: String)
+case class MiddlewareConf(geoCities: GeoCitiesConf, gPlaces: GPlacesConf)
 
+case class FoodopiaConf(auth: AuthConf, http: HttpConf, middleware: MiddlewareConf)
 object FoodopiaConf {
   def load: Task[FoodopiaConf] = {
     import pureconfig._

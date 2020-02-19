@@ -1,6 +1,6 @@
 package com.github.caeus.foodopia.middleware
 
-import com.github.caeus.foodopia.logic.Restaurant
+import com.github.caeus.foodopia.logic.{RLocation, Restaurant}
 import zio.Task
 
 trait NearbyRestaurantsSrv {
@@ -12,5 +12,12 @@ object NearbyRestaurantsSrv {
 }
 final class DefaultNearbyRestaurantsSrv(googlePlacesAPI: GooglePlacesAPI)
     extends NearbyRestaurantsSrv {
-  override def byLatLng(lat: BigDecimal, lng: BigDecimal): Task[Seq[Restaurant]] = Task.succeed(Nil)
+  override def byLatLng(lat: BigDecimal, lng: BigDecimal): Task[Seq[Restaurant]] =
+    googlePlacesAPI.nearbysearch(lat, lng).map { grestaurants =>
+      grestaurants.iterator.map(r => Restaurant(r.name,RLocation(
+        formatted = r.formatted_address,
+        lat=r.geometry.location.lat,
+        lng=r.geometry.location.lng
+      ))).toSeq
+    }
 }
