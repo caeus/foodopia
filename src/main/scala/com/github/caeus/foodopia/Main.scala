@@ -1,9 +1,9 @@
 package com.github.caeus.foodopia
 
 import com.github.caeus.foodopia.conf.FoodopiaConf
-import com.github.caeus.foodopia.logic.{FoodopiaAPI, NearbyRestaurantsSrv}
+import com.github.caeus.foodopia.logic.{FoodopiaAPI, RestaurantsEngine}
 import com.github.caeus.foodopia.middleware.{AuthEngine, GeoCitiesDB, GooglePlacesAPI}
-import com.github.caeus.foodopia.storage.CustomerRepo
+import com.github.caeus.foodopia.storage.{CustomerRepo, SearchesRegistry}
 import com.github.caeus.foodopia.view.FoodopiaCtrl
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -22,12 +22,17 @@ class FoodopiaMain(implicit runtime: zio.Runtime[Any]) {
         conf                      <- FoodopiaConf.load
         clock: Clock.Service[Any] <- RIO.access[ZEnv](_.clock)
         googlePlacesAPI            = GooglePlacesAPI.impl(conf.middleware.gPlaces)
-        nearbyRestaurants          = NearbyRestaurantsSrv.impl(googlePlacesAPI)
         geoCitiesDB                = GeoCitiesDB.impl(conf.middleware.geoCities)
+        restaurantsEngine          = RestaurantsEngine.impl(googlePlacesAPI, geoCitiesDB)
         customerRepo: CustomerRepo = CustomerRepo.impl
         authEngine: AuthEngine     = AuthEngine.impl(clock, conf.auth)
-        foodopiaAPI                = FoodopiaAPI.impl(customerRepo, authEngine, nearbyRestaurants, geoCitiesDB)
-        foodopiaCtrl               = new FoodopiaCtrl(foodopiaAPI, clock)
+        searchesEngine             = SearchesRegistry.impl(clock)
+        foodopiaAPI = FoodopiaAPI.impl(customerRepo,
+                                       authEngine,
+                                       restaurantsEngine,
+                                       searchesEngine,
+                                       geoCitiesDB)
+        foodopiaCtrl = new FoodopiaCtrl(foodopiaAPI, clock)
         httpApp = Logger.httpApp(logHeaders = false, logBody = false) {
           CORS(foodopiaCtrl.routes.orNotFound,
                CORS.DefaultCORSConfig.copy(allowedOrigins = _ => true))

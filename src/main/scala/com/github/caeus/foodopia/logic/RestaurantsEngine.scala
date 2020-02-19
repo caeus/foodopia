@@ -8,7 +8,7 @@ import zio.Task
 trait RestaurantsEngine {
   def byFilter(filter: RestaurantsFilter): Task[Seq[Restaurant]]
 }
-object RestaurantsEngineNearbyRestaurantsSrv {
+object RestaurantsEngine {
   def impl(googlePlacesAPI: GooglePlacesAPI, geoCitiesDB: GeoCitiesDB): RestaurantsEngine =
     new DefaultRestaurantsEngine(googlePlacesAPI, geoCitiesDB: GeoCitiesDB)
 }

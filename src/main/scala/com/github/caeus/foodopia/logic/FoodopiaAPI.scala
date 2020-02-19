@@ -1,7 +1,7 @@
 package com.github.caeus.foodopia.logic
 
 import com.github.caeus.foodopia.middleware.{AuthEngine, GeoCitiesDB}
-import com.github.caeus.foodopia.storage.CustomerRepo
+import com.github.caeus.foodopia.storage.{CustomerRepo, SearchesRegistry}
 import zio.Task
 
 trait FoodopiaAPI {
@@ -12,16 +12,19 @@ trait FoodopiaAPI {
 object FoodopiaAPI {
   def impl(customerRepo: CustomerRepo,
            authEngine: AuthEngine,
-           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+           restaurantsEngine: RestaurantsEngine,
+           searchesRegistry: SearchesRegistry,
            geoCitiesDB: GeoCitiesDB): FoodopiaAPI =
     new DefaultFoodopiaAPI(customerRepo: CustomerRepo,
                            authEngine: AuthEngine,
-                           nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                           restaurantsEngine: RestaurantsEngine,
+                           searchesRegistry: SearchesRegistry,
                            geoCitiesDB: GeoCitiesDB)
 }
 final class DefaultFoodopiaAPI(customerRepo: CustomerRepo,
                                authEngine: AuthEngine,
-                               nearbyRestaurantsSrv: NearbyRestaurantsSrv,
+                               restaurantsEngine: RestaurantsEngine,
+                               searchesRegistry: SearchesRegistry,
                                geoCitiesDB: GeoCitiesDB)
     extends FoodopiaAPI {
 
@@ -36,6 +39,6 @@ final class DefaultFoodopiaAPI(customerRepo: CustomerRepo,
         case None    => Task.fail(new IllegalArgumentException(s"Email $email is not registered"))
         case Some(_) => Task.succeed(())
       }
-    } yield CustomerAPI.impl(email, nearbyRestaurantsSrv, geoCitiesDB)
+    } yield CustomerAPI.impl(email, restaurantsEngine, searchesRegistry, geoCitiesDB)
   }
 }
